@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pocket Budget</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
 <style>
   :root {
     --bg: #fdf8f3;
@@ -265,9 +265,7 @@
       <div class="grid2 section-gap">
         <div class="card">
           <div class="card-title">Spending by Category</div>
-          <div class="chart-wrap">
-            <canvas id="dashCatChart" role="img" aria-label="Bar chart showing spending by category this month"></canvas>
-          </div>
+          <div id="dashCatBars"></div>
         </div>
         <div class="card">
           <div class="card-title">Budget Progress</div>
@@ -555,7 +553,7 @@ let state = {
 let editingTxId = null;
 let editingBudgetId = null;
 let pendingReceiptItems = [];
-let dashCatChartInstance = null;
+let dashCatChartInstance = null; // unused, kept for safety
 
 const DEFAULT_BUDGETS = [
   { id: uid(), name: 'Housing', emoji: '🏠', color: '#2d6a4f', amount: 1500 },
@@ -643,15 +641,19 @@ function showPage(id) {
   if (id === 'receipts') renderReceiptHistory();
 }
 
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', () => showPage(item.dataset.page));
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => showPage(item.dataset.page));
+  });
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('open'); });
+  });
+  loadState();
+  renderAll();
 });
 
 // ─── Modals ───────────────────────────────────────────────────
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('open'); });
-});
 
 // ─── Categories select ────────────────────────────────────────
 function populateCatSelect(selId, type = null) {
@@ -859,25 +861,29 @@ function renderDashboard() {
   remEl.className = 'stat-value ' + (remaining >= 0 ? 'green' : 'red');
   document.getElementById('statSavings').textContent = savingsRate + '%';
 
-  // Category bar chart
+  // Spending by category — pure CSS horizontal bars, no library needed
   const spendMap = getMonthSpendByCategory();
-  const cats = state.budgets.filter(b => spendMap[b.id]);
-  if (dashCatChartInstance) { dashCatChartInstance.destroy(); dashCatChartInstance = null; }
-  const ctx = document.getElementById('dashCatChart');
-  if (cats.length) {
-    dashCatChartInstance = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: cats.map(b => `${b.emoji} ${b.name}`),
-        datasets: [{ label: 'Spent', data: cats.map(b => spendMap[b.id] || 0), backgroundColor: cats.map(b => b.color + 'cc'), borderRadius: 5, borderSkipped: false }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-        scales: { y: { ticks: { callback: v => '$' + v.toLocaleString() }, grid: { color: '#e4e2da' } }, x: { grid: { display: false } } }
-      }
-    });
+  const cats = state.budgets.filter(b => spendMap[b.id]).sort((a, b) => spendMap[b.id] - spendMap[a.id]);
+  const catEl = document.getElementById('dashCatBars');
+  if (!cats.length) {
+    catEl.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="empty-icon">🛍️</div><div class="empty-text">No spending this month yet</div><div class="empty-hint">Add some transactions to see your breakdown</div></div>';
   } else {
-    ctx.parentElement.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-text">No spending this month yet</div></div>';
+    const maxAmt = spendMap[cats[0].id];
+    catEl.innerHTML = cats.map(b => {
+      const amt = spendMap[b.id];
+      const pct = Math.round((amt / maxAmt) * 100);
+      return `<div style="margin-bottom:13px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px">
+          <div style="font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px; font-family:'Nunito',sans-serif">
+            <span>${b.emoji}</span> ${escHtml(b.name)}
+          </div>
+          <div style="font-size:13px; font-weight:700; color:var(--text2)">${fmt(amt)}</div>
+        </div>
+        <div style="height:10px; background:var(--surface2); border-radius:99px; overflow:hidden">
+          <div style="height:100%; width:${pct}%; background:${b.color}; border-radius:99px; transition:width .4s"></div>
+        </div>
+      </div>`;
+    }).join('');
   }
 
   // Budget progress bars
@@ -1194,11 +1200,7 @@ function renderAll() {
   renderBudgetPage();
   renderTransactions();
   renderGoals();
-  renderReceiptHistory();
 }
-
-loadState();
-renderAll();
 
 // Auto-save reminder
 setInterval(() => {

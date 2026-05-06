@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pocket Budget</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #fdf8f3;
+    --surface: #ffffff;
+    --surface2: #fef3e8;
+    --border: #f0e4d4;
+    --border2: #e0ccb4;
+    --text: #2d1f0e;
+    --text2: #7a5c3e;
+    --text3: #b89070;
+    --accent: #e07b39;
+    --accent-light: #fff4ec;
+    --accent2: #c9622a;
+    --danger: #c0392b;
+    --danger-light: #fdf0ee;
+    --warn: #b7791f;
+    --warn-light: #fdf6e3;
+    --info: #4a7fcb;
+    --info-light: #eef4ff;
+    --green: #3a7d52;
+    --green-light: #edf7f1;
+    --radius: 14px;
+    --radius-lg: 20px;
+    --shadow: 0 2px 8px rgba(180,120,60,.08);
+    --shadow-md: 0 6px 20px rgba(180,120,60,.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.65; }
+
+  /* Layout */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 230px; background: linear-gradient(180deg, #fff9f4 0%, #fef5ec 100%); border-right: 1.5px solid var(--border); padding: 24px 0; display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 10; }
+  .main { margin-left: 230px; flex: 1; padding: 36px; max-width: 1100px; }
+  .logo { padding: 0 20px 24px; font-size: 19px; font-weight: 800; letter-spacing: -0.3px; border-bottom: 1.5px solid var(--border); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; color: var(--text); font-family: 'Nunito', sans-serif; }
+  .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(224,123,57,.35); }
+  .logo-icon svg { width: 17px; height: 17px; fill: white; }
+  nav { padding: 4px 12px; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; cursor: pointer; font-size: 14px; color: var(--text2); transition: all .15s; margin-bottom: 3px; font-weight: 600; font-family: 'Nunito', sans-serif; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent); }
+  .nav-item svg { width: 17px; height: 17px; opacity: .8; flex-shrink: 0; }
+  .nav-item.active svg { opacity: 1; }
+  .sidebar-bottom { padding: 16px 12px; border-top: 1.5px solid var(--border); }
+  .save-status { font-size: 12px; color: var(--text3); text-align: center; margin-bottom: 10px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 12px; border: none; cursor: pointer; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(224,123,57,.3); }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface); border: 1.5px solid var(--border2); color: var(--text); }
+  .btn-secondary:hover { background: var(--surface2); }
+  .btn-ghost { background: transparent; border: 1.5px solid transparent; color: var(--text2); font-family: 'Nunito', sans-serif; font-weight: 700; }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-danger { background: var(--danger-light); color: var(--danger); border: 1.5px solid #f5c6c2; }
+  .btn-danger:hover { background: #fce8e5; }
+  .btn-sm { padding: 5px 11px; font-size: 13px; border-radius: 9px; }
+  .btn-icon { padding: 6px; border-radius: 9px; }
+
+  /* Page sections */
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-header { margin-bottom: 30px; }
+  .page-title { font-size: 26px; font-weight: 800; margin-bottom: 4px; font-family: 'Nunito', sans-serif; }
+  .page-subtitle { color: var(--text2); font-size: 14px; font-weight: 500; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 22px 26px; box-shadow: var(--shadow); }
+  .card-title { font-size: 12px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 14px; font-family: 'Nunito', sans-serif; }
+
+  /* Grid */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+  /* Stat cards */
+  .stat-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 18px 22px; box-shadow: var(--shadow); }
+  .stat-label { font-size: 12px; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; font-family: 'Nunito', sans-serif; }
+  .stat-value { font-size: 28px; font-weight: 800; font-family: 'Nunito', sans-serif; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--danger); }
+  .stat-sub { font-size: 12px; color: var(--text3); margin-top: 3px; font-weight: 500; }
+
+  /* Forms */
+  .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+  .form-group { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 13px; font-weight: 700; color: var(--text2); font-family: 'Nunito', sans-serif; }
+  .form-group input, .form-group select, .form-group textarea {
+    border: 1.5px solid var(--border2); border-radius: 10px; padding: 10px 14px;
+    font-family: 'Nunito Sans', sans-serif; font-size: 14px; background: var(--surface); color: var(--text);
+    transition: border-color .15s; outline: none;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(224,123,57,.12); }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); padding: 10px 14px; text-align: left; border-bottom: 1.5px solid var(--border); font-family: 'Nunito', sans-serif; }
+  td { padding: 13px 14px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; font-family: 'Nunito', sans-serif; }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-red { background: var(--danger-light); color: var(--danger); }
+  .badge-warn { background: var(--warn-light); color: var(--warn); }
+  .badge-info { background: var(--info-light); color: var(--info); }
+  .badge-gray { background: var(--surface2); color: var(--text2); }
+
+  /* Progress */
+  .progress-bar { height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width .4s; }
+
+  /* Upload zone */
+  .upload-zone { border: 2.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 48px; text-align: center; cursor: pointer; transition: all .2s; background: var(--surface); }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: var(--accent-light); }
+  .upload-icon { width: 48px; height: 48px; margin: 0 auto 14px; opacity: .45; }
+  .upload-text { font-size: 16px; font-weight: 700; margin-bottom: 5px; font-family: 'Nunito', sans-serif; }
+  .upload-hint { font-size: 13px; color: var(--text3); font-weight: 500; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(45,31,14,.4); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 30px; width: 560px; max-width: 95vw; box-shadow: var(--shadow-md); max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+  .modal-title { font-size: 20px; font-weight: 800; font-family: 'Nunito', sans-serif; }
+  .modal-close { background: var(--surface2); border: none; cursor: pointer; color: var(--text3); font-size: 18px; line-height: 1; padding: 6px 9px; border-radius: 8px; }
+  .modal-close:hover { color: var(--text); background: var(--border); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  /* AI result */
+  .ai-result { background: var(--green-light); border: 1.5px solid #b7dfc7; border-radius: var(--radius); padding: 16px; margin-top: 12px; }
+  .ai-result-title { font-size: 13px; font-weight: 700; color: var(--green); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; font-family: 'Nunito', sans-serif; }
+  .receipt-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #c8e8d5; }
+  .receipt-item:last-child { border-bottom: none; }
+  .receipt-item-name { font-size: 14px; font-weight: 500; }
+  .receipt-item-controls { display: flex; gap: 8px; align-items: center; }
+  .receipt-item-amount { font-size: 14px; font-weight: 700; min-width: 65px; text-align: right; }
+
+  /* Misc */
+  .section-gap { margin-bottom: 20px; }
+  .flex { display: flex; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .flex-center { display: flex; align-items: center; gap: 10px; }
+  .gap-8 { gap: 8px; }
+  .gap-12 { gap: 12px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .mt-20 { margin-top: 20px; }
+  .text-sm { font-size: 13px; }
+  .text-muted { color: var(--text2); }
+  .mono { font-weight: 700; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; font-weight: 700; color: var(--text2); margin-bottom: 4px; font-family: 'Nunito', sans-serif; }
+  .empty-hint { font-size: 13px; font-weight: 500; }
+  hr { border: none; border-top: 1.5px solid var(--border); margin: 20px 0; }
+  .cat-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-row { display: flex; align-items: center; gap: 10px; padding: 16px; color: var(--text2); font-size: 14px; font-weight: 600; }
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--text); color: white; padding: 13px 20px; border-radius: 14px; font-size: 14px; font-weight: 600; z-index: 999; opacity: 0; transition: opacity .3s; pointer-events: none; font-family: 'Nunito', sans-serif; }
+  .toast.show { opacity: 1; }
+  select option { background: var(--surface); }
+  .budget-bar-wrap { margin-bottom: 18px; }
+  .budget-bar-header { display: flex; justify-content: space-between; margin-bottom: 7px; font-size: 14px; }
+  .budget-bar-name { font-weight: 700; display: flex; align-items: center; gap: 7px; font-family: 'Nunito', sans-serif; }
+  .budget-amounts { font-size: 13px; color: var(--text2); font-weight: 600; }
+  .chart-wrap { position: relative; height: 240px; }
+  .donut-wrap { position: relative; height: 200px; width: 200px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      </div>
+      Pocket Budget
+    </div>
+    <nav>
+      <div class="nav-item active" data-page="dashboard">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" data-page="budget">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+        Budget Plan
+      </div>
+      <div class="nav-item" data-page="transactions">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+        Transactions
+      </div>
+      <div class="nav-item" data-page="receipts">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z"/></svg>
+        Receipts
+      </div>
+      <div class="nav-item" data-page="goals">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-4H7l5-8 5 8h-4v4z"/></svg>
+        Goals
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="save-status" id="saveStatus">Auto-saved ✓</div>
+      <button class="btn btn-secondary" style="width:100%; justify-content:center; margin-bottom:8px; font-size:13px;" onclick="exportData()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/></svg>
+        Export Data
+      </button>
+      <button class="btn btn-ghost" style="width:100%; justify-content:center; font-size:13px;" onclick="document.getElementById('importFile').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-2 5v2h6v-2H9zm-4 0v2H3v-2h2zm14 0v2h2v-2h-2z"/></svg>
+        Import Backup
+      </button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header flex-between">
+        <div>
+          <div class="page-title">Good to see you 👋</div>
+          <div class="page-subtitle" id="dashMonth">Loading...</div>
+        </div>
+        <button class="btn btn-primary" onclick="showPage('transactions'); showAddTxModal()">+ Add Transaction</button>
+      </div>
+
+      <div class="grid4 section-gap">
+        <div class="stat-card">
+          <div class="stat-label">Total Income</div>
+          <div class="stat-value green" id="statIncome">$0</div>
+          <div class="stat-sub">This month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Spent</div>
+          <div class="stat-value" id="statSpent">$0</div>
+          <div class="stat-sub">This month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Remaining</div>
+          <div class="stat-value" id="statRemaining">$0</div>
+          <div class="stat-sub">vs budget</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Savings Rate</div>
+          <div class="stat-value" id="statSavings">0%</div>
+          <div class="stat-sub">of income</div>
+        </div>
+      </div>
+
+      <div class="grid2 section-gap">
+        <div class="card">
+          <div class="card-title">Spending by Category</div>
+          <div class="chart-wrap">
+            <canvas id="dashCatChart" role="img" aria-label="Bar chart showing spending by category this month"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Budget Progress</div>
+          <div id="dashBudgetBars"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex-between" style="margin-bottom:14px">
+          <div class="card-title" style="margin:0">Recent Transactions</div>
+          <a style="font-size:13px; color:var(--accent); cursor:pointer; text-decoration:none" onclick="showPage('transactions')">View all →</a>
+        </div>
+        <div id="dashRecent"></div>
+      </div>
+    </div>
+
+    <!-- BUDGET PLAN -->
+    <div class="page" id="page-budget">
+      <div class="page-header flex-between">
+        <div>
+          <div class="page-title">Budget Plan</div>
+          <div class="page-subtitle">Set monthly spending limits per category</div>
+        </div>
+        <button class="btn btn-primary" onclick="showBudgetModal()">+ Add Category</button>
+      </div>
+
+      <div class="grid2 section-gap">
+        <div class="stat-card">
+          <div class="stat-label">Total Budgeted</div>
+          <div class="stat-value" id="budgetTotal">$0</div>
+          <div class="stat-sub">per month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Spent This Month</div>
+          <div class="stat-value" id="budgetSpentTotal">$0</div>
+          <div class="stat-sub">across all categories</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="budgetList"></div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="page" id="page-transactions">
+      <div class="page-header flex-between">
+        <div>
+          <div class="page-title">Transactions</div>
+          <div class="page-subtitle">All your income and expenses in one place</div>
+        </div>
+        <div class="flex gap-8">
+          <select id="txFilter" class="btn btn-secondary" style="padding:7px 12px; font-size:13px" onchange="renderTransactions()">
+            <option value="all">All time</option>
+            <option value="month" selected>This month</option>
+            <option value="3months">Last 3 months</option>
+          </select>
+          <button class="btn btn-primary" onclick="showAddTxModal()">+ Add</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th style="text-align:right">Amount</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="txTableBody"></tbody>
+          </table>
+        </div>
+        <div id="txEmpty" class="empty-state" style="display:none">
+          <div class="empty-icon">💸</div>
+          <div class="empty-text">No transactions yet</div>
+          <div class="empty-hint">Add your first one or upload a receipt to get started</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECEIPTS -->
+    <div class="page" id="page-receipts">
+      <div class="page-header">
+        <div class="page-title">Upload Receipts</div>
+        <div class="page-subtitle">Upload a photo or PDF — AI will read and extract the line items</div>
+      </div>
+
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('receiptInput').click()">
+        <input type="file" id="receiptInput" accept="image/*,application/pdf" style="display:none" onchange="handleReceiptUpload(event)">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16.5v-9m0 0-3 3m3-3 3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.338-2.32 5.75 5.75 0 011.021 10.838"/></svg>
+        <div class="upload-text">Drop receipt here or click to browse</div>
+        <div class="upload-hint">Supports JPG, PNG, WEBP, PDF</div>
+      </div>
+
+      <div id="receiptResult" style="margin-top:20px; display:none"></div>
+
+      <div style="margin-top:28px">
+        <div class="flex-between" style="margin-bottom:12px">
+          <div class="card-title">Previously Processed</div>
+        </div>
+        <div id="receiptHistory" class="card">
+          <div class="empty-state">
+            <div class="empty-icon">🧾</div>
+            <div class="empty-text">No receipts yet</div>
+            <div class="empty-hint">Upload your first receipt above</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GOALS -->
+    <div class="page" id="page-goals">
+      <div class="page-header flex-between">
+        <div>
+          <div class="page-title">Savings Goals</div>
+          <div class="page-subtitle">Track what you're saving toward</div>
+        </div>
+        <button class="btn btn-primary" onclick="showGoalModal()">+ New Goal</button>
+      </div>
+      <div id="goalsList" class="grid2"></div>
+      <div id="goalsEmpty" class="empty-state" style="display:none">
+        <div class="empty-icon">🎯</div>
+        <div class="empty-text">No goals yet</div>
+        <div class="empty-hint">Create your first savings goal</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ADD TRANSACTION MODAL -->
+<div class="modal-overlay" id="txModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="txModalTitle">Add Transaction</div>
+      <button class="modal-close" onclick="closeModal('txModal')">×</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Type</label>
+        <select id="txType">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="txDate">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Description</label>
+        <input type="text" id="txDesc" placeholder="e.g. Grocery run, Netflix...">
+      </div>
+      <div class="form-group">
+        <label>Amount ($)</label>
+        <input type="number" id="txAmount" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="txCategory"></select>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <input type="text" id="txNotes" placeholder="Any extra detail...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('txModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTx()">Save Transaction</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD BUDGET MODAL -->
+<div class="modal-overlay" id="budgetModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="budgetModalTitle">Add Budget Category</div>
+      <button class="modal-close" onclick="closeModal('budgetModal')">×</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Category Name</label>
+        <input type="text" id="budgetName" placeholder="e.g. Groceries, Rent, Fun...">
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <input type="color" id="budgetColor" value="#2d6a4f" style="height:39px; padding:4px 6px; cursor:pointer">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Monthly Budget ($)</label>
+        <input type="number" id="budgetAmount" min="0" step="1" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Icon (emoji)</label>
+        <input type="text" id="budgetEmoji" placeholder="🛒" maxlength="2" style="font-size:18px">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('budgetModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBudget()">Save Category</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD GOAL MODAL -->
+<div class="modal-overlay" id="goalModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">New Savings Goal</div>
+      <button class="modal-close" onclick="closeModal('goalModal')">×</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Goal Name</label>
+        <input type="text" id="goalName" placeholder="e.g. Emergency Fund, Vacation...">
+      </div>
+      <div class="form-group">
+        <label>Icon (emoji)</label>
+        <input type="text" id="goalEmoji" placeholder="🎯" maxlength="2">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Target Amount ($)</label>
+        <input type="number" id="goalTarget" min="0" step="1" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Current Saved ($)</label>
+        <input type="number" id="goalSaved" min="0" step="1" placeholder="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Target Date (optional)</label>
+        <input type="date" id="goalDate">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('goalModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGoal()">Create Goal</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT SPLIT MODAL -->
+<div class="modal-overlay" id="splitModal">
+  <div class="modal" style="width:640px">
+    <div class="modal-header">
+      <div class="modal-title">Receipt Items — Assign Categories</div>
+      <button class="modal-close" onclick="closeModal('splitModal')">×</button>
+    </div>
+    <p class="text-sm text-muted" style="margin-bottom:14px">Review and assign each line item to a budget category, then import them as transactions.</p>
+    <div id="splitItems"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('splitModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="importReceiptItems()">Import All as Transactions</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────
+let state = {
+  transactions: [],
+  budgets: [],
+  goals: [],
+  receipts: []
+};
+
+let editingTxId = null;
+let editingBudgetId = null;
+let pendingReceiptItems = [];
+let dashCatChartInstance = null;
+
+const DEFAULT_BUDGETS = [
+  { id: uid(), name: 'Housing', emoji: '🏠', color: '#2d6a4f', amount: 1500 },
+  { id: uid(), name: 'Groceries', emoji: '🛒', color: '#2563eb', amount: 400 },
+  { id: uid(), name: 'Transport', emoji: '🚗', color: '#7c3aed', amount: 250 },
+  { id: uid(), name: 'Dining Out', emoji: '🍕', color: '#d97706', amount: 200 },
+  { id: uid(), name: 'Entertainment', emoji: '🎬', color: '#db2777', amount: 100 },
+  { id: uid(), name: 'Health', emoji: '💊', color: '#059669', amount: 150 },
+  { id: uid(), name: 'Shopping', emoji: '🛍️', color: '#dc2626', amount: 200 },
+  { id: uid(), name: 'Income', emoji: '💰', color: '#16a34a', amount: 0 },
+  { id: uid(), name: 'Other', emoji: '📦', color: '#6b7280', amount: 100 }
+];
+
+// ─── Helpers ──────────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function fmt(n) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n); }
+function fmtDate(d) { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function thisMonth() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+}
+
+function toast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function saveState() {
+  localStorage.setItem('pocketbudget_v1', JSON.stringify(state));
+  document.getElementById('saveStatus').textContent = 'Saved just now ✓';
+}
+
+function loadState() {
+  const raw = localStorage.getItem('pocketbudget_v1');
+  if (raw) {
+    try { state = JSON.parse(raw); } catch(e) {}
+  } else {
+    state.budgets = DEFAULT_BUDGETS;
+    saveState();
+  }
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pocket-budget-backup-${today()}.json`;
+  a.click();
+  toast('Backup downloaded!');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!imported.transactions || !imported.budgets) throw new Error('Invalid');
+      state = imported;
+      saveState();
+      renderAll();
+      toast('Data imported successfully!');
+    } catch {
+      toast('Error: invalid backup file');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ─── Navigation ───────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelector(`[data-page="${id}"]`).classList.add('active');
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'budget') renderBudgetPage();
+  if (id === 'transactions') renderTransactions();
+  if (id === 'goals') renderGoals();
+  if (id === 'receipts') renderReceiptHistory();
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => showPage(item.dataset.page));
+});
+
+// ─── Modals ───────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ─── Categories select ────────────────────────────────────────
+function populateCatSelect(selId, type = null) {
+  const sel = document.getElementById(selId);
+  sel.innerHTML = '';
+  state.budgets.forEach(b => {
+    if (type === 'expense' && b.name === 'Income') return;
+    if (type === 'income' && b.name !== 'Income') return;
+    const opt = document.createElement('option');
+    opt.value = b.id;
+    opt.textContent = `${b.emoji} ${b.name}`;
+    sel.appendChild(opt);
+  });
+}
+
+// ─── Transactions ─────────────────────────────────────────────
+function showAddTxModal(prefill = {}) {
+  editingTxId = prefill.id || null;
+  document.getElementById('txModalTitle').textContent = editingTxId ? 'Edit Transaction' : 'Add Transaction';
+  document.getElementById('txType').value = prefill.type || 'expense';
+  document.getElementById('txDate').value = prefill.date || today();
+  document.getElementById('txDesc').value = prefill.desc || '';
+  document.getElementById('txAmount').value = prefill.amount || '';
+  document.getElementById('txNotes').value = prefill.notes || '';
+  populateCatSelect('txCategory');
+  if (prefill.categoryId) document.getElementById('txCategory').value = prefill.categoryId;
+  document.getElementById('txModal').classList.add('open');
+}
+
+function saveTx() {
+  const type = document.getElementById('txType').value;
+  const date = document.getElementById('txDate').value;
+  const desc = document.getElementById('txDesc').value.trim();
+  const amount = parseFloat(document.getElementById('txAmount').value);
+  const categoryId = document.getElementById('txCategory').value;
+  const notes = document.getElementById('txNotes').value.trim();
+
+  if (!desc || isNaN(amount) || amount <= 0) { toast('Please fill in description and amount'); return; }
+
+  if (editingTxId) {
+    const idx = state.transactions.findIndex(t => t.id === editingTxId);
+    if (idx > -1) state.transactions[idx] = { ...state.transactions[idx], type, date, desc, amount, categoryId, notes };
+  } else {
+    state.transactions.push({ id: uid(), type, date, desc, amount, categoryId, notes });
+  }
+
+  state.transactions.sort((a, b) => b.date.localeCompare(a.date));
+  saveState();
+  closeModal('txModal');
+  renderTransactions();
+  renderDashboard();
+  toast(editingTxId ? 'Transaction updated!' : 'Transaction added!');
+}
+
+function deleteTx(id) {
+  state.transactions = state.transactions.filter(t => t.id !== id);
+  saveState();
+  renderTransactions();
+  renderDashboard();
+  toast('Deleted');
+}
+
+function getFilteredTx() {
+  const filter = document.getElementById('txFilter')?.value || 'month';
+  const now = new Date();
+  return state.transactions.filter(tx => {
+    if (filter === 'all') return true;
+    const d = new Date(tx.date + 'T12:00:00');
+    if (filter === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (filter === '3months') { const ago = new Date(now); ago.setMonth(ago.getMonth()-3); return d >= ago; }
+    return true;
+  });
+}
+
+function renderTransactions() {
+  const txs = getFilteredTx();
+  const tbody = document.getElementById('txTableBody');
+  const empty = document.getElementById('txEmpty');
+  if (!txs.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = txs.map(tx => {
+    const cat = state.budgets.find(b => b.id === tx.categoryId);
+    const isInc = tx.type === 'income';
+    return `<tr>
+      <td style="color:var(--text2); font-size:13px">${fmtDate(tx.date)}</td>
+      <td><div style="font-weight:500">${escHtml(tx.desc)}</div>${tx.notes ? `<div style="font-size:12px;color:var(--text3)">${escHtml(tx.notes)}</div>` : ''}</td>
+      <td>${cat ? `<span class="badge badge-gray"><span class="cat-dot" style="background:${cat.color}"></span>${cat.emoji} ${cat.name}</span>` : '<span class="text-muted">—</span>'}</td>
+      <td><span class="badge ${isInc ? 'badge-green' : 'badge-gray'}">${isInc ? 'Income' : 'Expense'}</span></td>
+      <td style="text-align:right; font-weight:700; color:${isInc ? 'var(--green)' : 'var(--text)'}">${isInc ? '+' : '-'}${fmt(tx.amount)}</td>
+      <td>
+        <div class="flex gap-8" style="justify-content:flex-end">
+          <button class="btn btn-ghost btn-icon btn-sm" onclick='editTx("${tx.id}")' title="Edit">✏️</button>
+          <button class="btn btn-ghost btn-icon btn-sm" onclick='deleteTx("${tx.id}")' title="Delete">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function editTx(id) {
+  const tx = state.transactions.find(t => t.id === id);
+  if (tx) showAddTxModal(tx);
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── Budget ────────────────────────────────────────────────────
+function showBudgetModal(b = null) {
+  editingBudgetId = b ? b.id : null;
+  document.getElementById('budgetModalTitle').textContent = b ? 'Edit Category' : 'Add Budget Category';
+  document.getElementById('budgetName').value = b ? b.name : '';
+  document.getElementById('budgetColor').value = b ? b.color : '#2d6a4f';
+  document.getElementById('budgetAmount').value = b ? b.amount : '';
+  document.getElementById('budgetEmoji').value = b ? b.emoji : '';
+  document.getElementById('budgetModal').classList.add('open');
+}
+
+function saveBudget() {
+  const name = document.getElementById('budgetName').value.trim();
+  const color = document.getElementById('budgetColor').value;
+  const amount = parseFloat(document.getElementById('budgetAmount').value) || 0;
+  const emoji = document.getElementById('budgetEmoji').value || '📦';
+  if (!name) { toast('Please enter a category name'); return; }
+
+  if (editingBudgetId) {
+    const idx = state.budgets.findIndex(b => b.id === editingBudgetId);
+    if (idx > -1) state.budgets[idx] = { ...state.budgets[idx], name, color, amount, emoji };
+  } else {
+    state.budgets.push({ id: uid(), name, color, amount, emoji });
+  }
+
+  saveState();
+  closeModal('budgetModal');
+  renderBudgetPage();
+  toast(editingBudgetId ? 'Category updated!' : 'Category added!');
+}
+
+function deleteBudget(id) {
+  state.budgets = state.budgets.filter(b => b.id !== id);
+  saveState();
+  renderBudgetPage();
+  toast('Category deleted');
+}
+
+function getMonthSpendByCategory() {
+  const month = thisMonth();
+  const map = {};
+  state.transactions.filter(tx => tx.date.startsWith(month) && tx.type === 'expense').forEach(tx => {
+    map[tx.categoryId] = (map[tx.categoryId] || 0) + tx.amount;
+  });
+  return map;
+}
+
+function renderBudgetPage() {
+  const spendMap = getMonthSpendByCategory();
+  const totalBudget = state.budgets.filter(b => b.amount > 0).reduce((s,b) => s + b.amount, 0);
+  const totalSpent = Object.values(spendMap).reduce((s,v) => s+v, 0);
+  document.getElementById('budgetTotal').textContent = fmt(totalBudget);
+  document.getElementById('budgetSpentTotal').textContent = fmt(totalSpent);
+
+  const list = document.getElementById('budgetList');
+  if (!state.budgets.length) { list.innerHTML = '<div class="empty-state"><div class="empty-text">No categories yet</div></div>'; return; }
+
+  list.innerHTML = state.budgets.map(b => {
+    const spent = spendMap[b.id] || 0;
+    const pct = b.amount > 0 ? Math.min(100, (spent / b.amount) * 100) : 0;
+    const over = b.amount > 0 && spent > b.amount;
+    const fillColor = over ? 'var(--danger)' : pct > 80 ? 'var(--warn)' : b.color;
+    return `<div class="budget-bar-wrap">
+      <div class="budget-bar-header">
+        <div class="budget-bar-name">
+          <span class="cat-dot" style="background:${b.color}"></span>
+          <span style="font-size:16px">${b.emoji}</span>
+          ${escHtml(b.name)}
+          ${over ? '<span class="badge badge-red" style="font-size:11px">Over!</span>' : ''}
+        </div>
+        <div class="flex-center gap-8">
+          <div class="budget-amounts">${fmt(spent)} / ${b.amount ? fmt(b.amount) : 'No limit'}</div>
+          <button class="btn btn-ghost btn-icon btn-sm" onclick='showBudgetModal(${JSON.stringify(b).replace(/'/g,"&#39;")})'>✏️</button>
+          <button class="btn btn-danger btn-icon btn-sm" onclick='deleteBudget("${b.id}")'>🗑️</button>
+        </div>
+      </div>
+      ${b.amount > 0 ? `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:${fillColor}"></div></div>` : ''}
+    </div>`;
+  }).join('<hr>');
+}
+
+// ─── Dashboard ────────────────────────────────────────────────
+function renderDashboard() {
+  const month = thisMonth();
+  const n = new Date();
+  document.getElementById('dashMonth').textContent = n.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const monthTxs = state.transactions.filter(tx => tx.date.startsWith(month));
+  const income = monthTxs.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+  const spent = monthTxs.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+  const budgetTotal = state.budgets.filter(b => b.amount > 0).reduce((s,b) => s+b.amount, 0);
+  const remaining = budgetTotal - spent;
+  const savingsRate = income > 0 ? Math.round(((income - spent) / income) * 100) : 0;
+
+  document.getElementById('statIncome').textContent = fmt(income);
+  document.getElementById('statSpent').textContent = fmt(spent);
+  const remEl = document.getElementById('statRemaining');
+  remEl.textContent = fmt(remaining);
+  remEl.className = 'stat-value ' + (remaining >= 0 ? 'green' : 'red');
+  document.getElementById('statSavings').textContent = savingsRate + '%';
+
+  // Category bar chart
+  const spendMap = getMonthSpendByCategory();
+  const cats = state.budgets.filter(b => spendMap[b.id]);
+  if (dashCatChartInstance) { dashCatChartInstance.destroy(); dashCatChartInstance = null; }
+  const ctx = document.getElementById('dashCatChart');
+  if (cats.length) {
+    dashCatChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: cats.map(b => `${b.emoji} ${b.name}`),
+        datasets: [{ label: 'Spent', data: cats.map(b => spendMap[b.id] || 0), backgroundColor: cats.map(b => b.color + 'cc'), borderRadius: 5, borderSkipped: false }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: { y: { ticks: { callback: v => '$' + v.toLocaleString() }, grid: { color: '#e4e2da' } }, x: { grid: { display: false } } }
+      }
+    });
+  } else {
+    ctx.parentElement.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-text">No spending this month yet</div></div>';
+  }
+
+  // Budget progress bars
+  const bars = document.getElementById('dashBudgetBars');
+  const topBudgets = state.budgets.filter(b => b.amount > 0).slice(0, 5);
+  if (!topBudgets.length) { bars.innerHTML = '<div class="empty-state">Add budget categories to see progress</div>'; }
+  else {
+    bars.innerHTML = topBudgets.map(b => {
+      const s = spendMap[b.id] || 0;
+      const pct = Math.min(100, (s / b.amount) * 100);
+      const over = s > b.amount;
+      const fillColor = over ? 'var(--danger)' : pct > 80 ? 'var(--warn)' : b.color;
+      return `<div class="budget-bar-wrap">
+        <div class="budget-bar-header">
+          <div class="budget-bar-name"><span class="cat-dot" style="background:${b.color}"></span>${b.emoji} ${escHtml(b.name)}</div>
+          <div class="budget-amounts">${fmt(s)} / ${fmt(b.amount)}</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:${fillColor}"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Recent 5
+  const recent = document.getElementById('dashRecent');
+  const last5 = state.transactions.slice(0, 5);
+  if (!last5.length) { recent.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-hint">No transactions yet — add one above</div></div>'; return; }
+  recent.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th></tr></thead><tbody>` +
+    last5.map(tx => {
+      const cat = state.budgets.find(b => b.id === tx.categoryId);
+      const isInc = tx.type === 'income';
+      return `<tr>
+        <td style="font-size:13px;color:var(--text2)">${fmtDate(tx.date)}</td>
+        <td style="font-weight:500">${escHtml(tx.desc)}</td>
+        <td>${cat ? `${cat.emoji} ${cat.name}` : '—'}</td>
+        <td style="text-align:right;font-weight:700;color:${isInc?'var(--green)':'var(--text)'}">${isInc?'+':'-'}${fmt(tx.amount)}</td>
+      </tr>`;
+    }).join('') + '</tbody></table></div>';
+}
+
+// ─── Goals ────────────────────────────────────────────────────
+function showGoalModal(g = null) {
+  document.getElementById('goalName').value = g ? g.name : '';
+  document.getElementById('goalEmoji').value = g ? g.emoji : '';
+  document.getElementById('goalTarget').value = g ? g.target : '';
+  document.getElementById('goalSaved').value = g ? g.saved : '';
+  document.getElementById('goalDate').value = g ? (g.targetDate || '') : '';
+  document.getElementById('goalModal').dataset.editId = g ? g.id : '';
+  document.getElementById('goalModal').classList.add('open');
+}
+
+function saveGoal() {
+  const name = document.getElementById('goalName').value.trim();
+  const emoji = document.getElementById('goalEmoji').value || '🎯';
+  const target = parseFloat(document.getElementById('goalTarget').value) || 0;
+  const saved = parseFloat(document.getElementById('goalSaved').value) || 0;
+  const targetDate = document.getElementById('goalDate').value;
+  if (!name || target <= 0) { toast('Please fill in name and target amount'); return; }
+
+  const editId = document.getElementById('goalModal').dataset.editId;
+  if (editId) {
+    const idx = state.goals.findIndex(g => g.id === editId);
+    if (idx > -1) state.goals[idx] = { ...state.goals[idx], name, emoji, target, saved, targetDate };
+  } else {
+    state.goals.push({ id: uid(), name, emoji, target, saved, targetDate });
+  }
+
+  saveState();
+  closeModal('goalModal');
+  renderGoals();
+  toast('Goal saved!');
+}
+
+function deleteGoal(id) {
+  state.goals = state.goals.filter(g => g.id !== id);
+  saveState();
+  renderGoals();
+  toast('Goal deleted');
+}
+
+function updateGoalSaved(id, val) {
+  const g = state.goals.find(g => g.id === id);
+  if (g) { g.saved = parseFloat(val) || 0; saveState(); renderGoals(); }
+}
+
+function renderGoals() {
+  const list = document.getElementById('goalsList');
+  const empty = document.getElementById('goalsEmpty');
+  if (!state.goals.length) { list.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = state.goals.map(g => {
+    const pct = Math.min(100, g.target > 0 ? (g.saved / g.target) * 100 : 0);
+    const done = g.saved >= g.target;
+    let dateInfo = '';
+    if (g.targetDate) {
+      const daysLeft = Math.ceil((new Date(g.targetDate) - new Date()) / 86400000);
+      dateInfo = `<div class="text-sm text-muted" style="margin-top:4px">${daysLeft > 0 ? `${daysLeft} days left` : 'Past target date'}</div>`;
+    }
+    return `<div class="card">
+      <div class="flex-between" style="margin-bottom:12px">
+        <div class="flex-center"><span style="font-size:24px">${g.emoji}</span> <span style="font-size:16px; font-weight:600">${escHtml(g.name)}</span></div>
+        <div class="flex gap-8">
+          <button class="btn btn-ghost btn-sm" onclick='showGoalModal(${JSON.stringify(g).replace(/'/g,"&#39;")})'>✏️</button>
+          <button class="btn btn-danger btn-sm" onclick='deleteGoal("${g.id}")'>Delete</button>
+        </div>
+      </div>
+      <div class="flex-between" style="margin-bottom:8px">
+        <div class="mono" style="font-size:20px; font-weight:600; color:${done ? 'var(--accent)' : 'var(--text)'}">${fmt(g.saved)}</div>
+        <div class="text-muted text-sm">of ${fmt(g.target)}</div>
+      </div>
+      <div class="progress-bar" style="height:10px; margin-bottom:8px"><div class="progress-fill" style="width:${pct}%; background:${done ? 'var(--accent)' : 'var(--info)'}"></div></div>
+      <div class="flex-between">
+        <div class="text-sm text-muted">${Math.round(pct)}% complete${done ? ' 🎉' : ''}</div>
+        ${dateInfo}
+      </div>
+      <div class="form-row mt-16" style="align-items:center; gap:8px">
+        <div class="form-group" style="flex:1; margin-bottom:0">
+          <input type="number" min="0" step="1" value="${g.saved}" placeholder="Update amount saved" onchange='updateGoalSaved("${g.id}", this.value)' style="font-size:13px; padding:7px 10px">
+        </div>
+        <span class="text-sm text-muted">Update saved amount</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Receipt Upload & AI ───────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) processReceiptFile(f); });
+
+function handleReceiptUpload(e) {
+  const file = e.target.files[0];
+  if (file) processReceiptFile(file);
+  e.target.value = '';
+}
+
+async function processReceiptFile(file) {
+  const resultDiv = document.getElementById('receiptResult');
+  resultDiv.style.display = '';
+  resultDiv.innerHTML = `<div class="ai-result"><div class="loading-row"><div class="spinner"></div><span>Reading receipt with AI...</span></div></div>`;
+
+  try {
+    const base64 = await fileToBase64(file);
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+
+    if (!isImage && !isPdf) { throw new Error('Please upload an image or PDF'); }
+
+    const mediaType = file.type;
+
+    const messageContent = isImage
+      ? [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: `You are a receipt parser. Extract ALL line items from this receipt image.
+Return ONLY valid JSON, no markdown, no explanation. Format:
+{
+  "store": "Store name",
+  "date": "YYYY-MM-DD or empty string",
+  "total": 0.00,
+  "items": [
+    { "name": "Item name", "amount": 0.00, "category": "best guess category from: Groceries, Dining Out, Health, Shopping, Transport, Entertainment, Other" }
+  ]
+}` }
+        ]
+      : [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+          { type: 'text', text: `You are a receipt parser. Extract ALL line items from this receipt PDF.
+Return ONLY valid JSON, no markdown, no explanation. Format:
+{
+  "store": "Store name",
+  "date": "YYYY-MM-DD or empty string",
+  "total": 0.00,
+  "items": [
+    { "name": "Item name", "amount": 0.00, "category": "best guess category from: Groceries, Dining Out, Health, Shopping, Transport, Entertainment, Other" }
+  ]
+}` }
+        ];
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: messageContent }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content?.map(c => c.text || '').join('').trim();
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    // Store receipt
+    const receipt = {
+      id: uid(),
+      filename: file.name,
+      store: parsed.store || 'Unknown Store',
+      date: parsed.date || today(),
+      total: parsed.total || 0,
+      items: parsed.items || [],
+      processedAt: new Date().toISOString()
+    };
+    state.receipts = state.receipts || [];
+    state.receipts.unshift(receipt);
+    saveState();
+
+    pendingReceiptItems = receipt.items.map(item => ({
+      ...item,
+      selected: true,
+      resolvedCategoryId: findCategoryId(item.category)
+    }));
+
+    showSplitModal(receipt);
+    resultDiv.innerHTML = `<div class="ai-result"><div class="ai-result-title">✅ Receipt read! Found ${receipt.items.length} item(s) from ${receipt.store}</div></div>`;
+    renderReceiptHistory();
+
+  } catch(err) {
+    resultDiv.innerHTML = `<div class="ai-result" style="background:var(--danger-light); border-color:#f5c6c2"><div class="ai-result-title" style="color:var(--danger)">⚠ Could not parse receipt</div><div class="text-sm text-muted">${err.message}</div></div>`;
+  }
+}
+
+function findCategoryId(guess) {
+  if (!guess) return state.budgets[0]?.id;
+  const lower = guess.toLowerCase();
+  const match = state.budgets.find(b => b.name.toLowerCase().includes(lower) || lower.includes(b.name.toLowerCase()));
+  return match ? match.id : (state.budgets.find(b => b.name === 'Other')?.id || state.budgets[0]?.id);
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result.split(',')[1]);
+    reader.onerror = () => rej(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function showSplitModal(receipt) {
+  const container = document.getElementById('splitItems');
+  container.innerHTML = `<div style="margin-bottom:14px; padding:12px 14px; background:var(--surface2); border-radius:8px; font-size:14px">
+    <strong>${escHtml(receipt.store)}</strong> · ${receipt.date ? fmtDate(receipt.date) : 'No date'} · Total: ${fmt(receipt.total)}
+  </div>` +
+  pendingReceiptItems.map((item, i) => `
+    <div class="receipt-item">
+      <div style="flex:1">
+        <div style="font-weight:500; font-size:14px">${escHtml(item.name)}</div>
+        <div style="font-size:12px; color:var(--text3)">Suggested: ${item.category}</div>
+      </div>
+      <div class="receipt-item-controls">
+        <select style="font-size:13px; padding:5px 8px; border-radius:6px; border:1px solid var(--border2)" onchange='pendingReceiptItems[${i}].resolvedCategoryId = this.value'>
+          ${state.budgets.map(b => `<option value="${b.id}" ${b.id === item.resolvedCategoryId ? 'selected' : ''}>${b.emoji} ${b.name}</option>`).join('')}
+        </select>
+        <input type="number" value="${item.amount.toFixed(2)}" min="0" step="0.01" style="width:80px; font-size:13px; padding:5px 8px; border-radius:6px; border:1px solid var(--border2); text-align:right;  onchange='pendingReceiptItems[${i}].amount = parseFloat(this.value)||0'>
+        <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer">
+          <input type="checkbox" ${item.selected ? 'checked' : ''} onchange='pendingReceiptItems[${i}].selected = this.checked'> Import
+        </label>
+      </div>
+    </div>`).join('');
+  document.getElementById('splitModal').classList.add('open');
+}
+
+function importReceiptItems() {
+  const receiptDate = state.receipts[0]?.date || today();
+  const store = state.receipts[0]?.store || 'Receipt';
+  let count = 0;
+  pendingReceiptItems.forEach(item => {
+    if (!item.selected) return;
+    state.transactions.push({
+      id: uid(), type: 'expense', date: receiptDate,
+      desc: item.name, amount: item.amount,
+      categoryId: item.resolvedCategoryId, notes: `From receipt: ${store}`
+    });
+    count++;
+  });
+  state.transactions.sort((a,b) => b.date.localeCompare(a.date));
+  saveState();
+  closeModal('splitModal');
+  showPage('transactions');
+  toast(`${count} item${count !== 1 ? 's' : ''} imported!`);
+}
+
+function renderReceiptHistory() {
+  const hist = document.getElementById('receiptHistory');
+  const rs = state.receipts || [];
+  if (!rs.length) {
+    hist.innerHTML = `<div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-text">No receipts yet</div><div class="empty-hint">Upload your first receipt above</div></div>`;
+    return;
+  }
+  hist.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Store</th><th>Items</th><th style="text-align:right">Total</th><th></th></tr></thead>
+    <tbody>${rs.map(r => `<tr>
+      <td style="font-size:13px;color:var(--text2)">${r.date ? fmtDate(r.date) : '—'}</td>
+      <td style="font-weight:500">${escHtml(r.store)}</td>
+      <td><span class="badge badge-gray">${r.items.length} items</span></td>
+      <td style="text-align:right;>${fmt(r.total)}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick='reImportReceipt("${r.id}")'>Re-import</button></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function reImportReceipt(id) {
+  const r = state.receipts.find(r => r.id === id);
+  if (!r) return;
+  pendingReceiptItems = r.items.map(item => ({
+    ...item, selected: true, resolvedCategoryId: findCategoryId(item.category)
+  }));
+  showSplitModal(r);
+}
+
+// ─── Init ──────────────────────────────────────────────────────
+function renderAll() {
+  renderDashboard();
+  renderBudgetPage();
+  renderTransactions();
+  renderGoals();
+  renderReceiptHistory();
+}
+
+loadState();
+renderAll();
+
+// Auto-save reminder
+setInterval(() => {
+  document.getElementById('saveStatus').textContent = 'Auto-saved ✓';
+}, 30000);
+</script>
+</body>
+</html>

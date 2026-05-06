@@ -5,7 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pocket Budget</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-
+<script>
+window._chartReady = false;
+(function(){
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
+  s.onload  = function(){ window._chartReady = true; };
+  s.onerror = function(){ window._chartReady = false; };
+  document.head.appendChild(s);
+})();
+</script>
 <style>
   :root {
     --bg: #fdf8f3;
@@ -203,10 +212,7 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
         Transactions
       </div>
-      <div class="nav-item" data-page="receipts">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z"/></svg>
-        Receipts
-      </div>
+
       <div class="nav-item" data-page="goals">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-4H7l5-8 5 8h-4v4z"/></svg>
         Goals
@@ -265,7 +271,9 @@
       <div class="grid2 section-gap">
         <div class="card">
           <div class="card-title">Spending by Category</div>
-          <div id="dashCatBars"></div>
+          <div class="chart-wrap">
+            <canvas id="dashCatChart" role="img" aria-label="Bar chart showing spending by category this month"></canvas>
+          </div>
         </div>
         <div class="card">
           <div class="card-title">Budget Progress</div>
@@ -323,6 +331,7 @@
             <option value="month" selected>This month</option>
             <option value="3months">Last 3 months</option>
           </select>
+          <button class="btn btn-secondary" onclick="showReceiptModal()" style="gap:6px">🧾 Add Receipt</button>
           <button class="btn btn-primary" onclick="showAddTxModal()">+ Add</button>
         </div>
       </div>
@@ -347,36 +356,6 @@
           <div class="empty-icon">💸</div>
           <div class="empty-text">No transactions yet</div>
           <div class="empty-hint">Add your first one or upload a receipt to get started</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- RECEIPTS -->
-    <div class="page" id="page-receipts">
-      <div class="page-header">
-        <div class="page-title">Upload Receipts</div>
-        <div class="page-subtitle">Upload a photo or PDF — AI will read and extract the line items</div>
-      </div>
-
-      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('receiptInput').click()">
-        <input type="file" id="receiptInput" accept="image/*,application/pdf" style="display:none" onchange="handleReceiptUpload(event)">
-        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16.5v-9m0 0-3 3m3-3 3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.338-2.32 5.75 5.75 0 011.021 10.838"/></svg>
-        <div class="upload-text">Drop receipt here or click to browse</div>
-        <div class="upload-hint">Supports JPG, PNG, WEBP, PDF</div>
-      </div>
-
-      <div id="receiptResult" style="margin-top:20px; display:none"></div>
-
-      <div style="margin-top:28px">
-        <div class="flex-between" style="margin-bottom:12px">
-          <div class="card-title">Previously Processed</div>
-        </div>
-        <div id="receiptHistory" class="card">
-          <div class="empty-state">
-            <div class="empty-icon">🧾</div>
-            <div class="empty-text">No receipts yet</div>
-            <div class="empty-hint">Upload your first receipt above</div>
-          </div>
         </div>
       </div>
     </div>
@@ -522,18 +501,70 @@
   </div>
 </div>
 
-<!-- RECEIPT SPLIT MODAL -->
-<div class="modal-overlay" id="splitModal">
-  <div class="modal" style="width:640px">
+<!-- MANUAL RECEIPT MODAL -->
+<div class="modal-overlay" id="receiptModal">
+  <div class="modal" style="width:640px; max-width:96vw;">
     <div class="modal-header">
-      <div class="modal-title">Receipt Items — Assign Categories</div>
-      <button class="modal-close" onclick="closeModal('splitModal')">×</button>
+      <div class="modal-title">🧾 Add Receipt</div>
+      <button class="modal-close" onclick="closeModal('receiptModal')">×</button>
     </div>
-    <p class="text-sm text-muted" style="margin-bottom:14px">Review and assign each line item to a budget category, then import them as transactions.</p>
-    <div id="splitItems"></div>
+
+    <!-- Store + date -->
+    <div class="form-row" style="margin-bottom:16px">
+      <div class="form-group" style="flex:2">
+        <label>Store / Merchant</label>
+        <input type="text" id="rcptStore" placeholder="e.g. HEB, Target, Chick-fil-A…">
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="rcptDate">
+      </div>
+    </div>
+
+    <!-- Receipt-paper look -->
+    <div style="background:#fffef9; border:1.5px solid var(--border2); border-radius:14px; overflow:hidden; margin-bottom:14px; box-shadow: 0 2px 8px rgba(0,0,0,.06);">
+
+      <!-- Paper header -->
+      <div style="background:var(--surface2); padding:10px 16px; border-bottom:1px dashed var(--border2); display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; font-family:'Nunito',sans-serif">Items</span>
+        <span style="font-size:12px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; font-family:'Nunito',sans-serif">Amount</span>
+      </div>
+
+      <!-- Line items list -->
+      <div id="rcptItemsList" style="min-height:48px; max-height:260px; overflow-y:auto; padding:4px 0;"></div>
+
+      <!-- Dashed divider -->
+      <div style="border-top:1px dashed var(--border2); margin:0 16px;"></div>
+
+      <!-- Running total -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px;">
+        <span style="font-weight:700; font-family:'Nunito',sans-serif; font-size:14px;">TOTAL</span>
+        <span id="rcptRunningTotal" style="font-weight:800; font-size:18px; font-family:'Nunito',sans-serif;">$0.00</span>
+      </div>
+    </div>
+
+    <!-- Add item row -->
+    <div style="background:var(--accent-light); border:1.5px solid var(--border); border-radius:12px; padding:13px 14px; margin-bottom:4px;">
+      <div style="font-size:12px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; margin-bottom:9px; font-family:'Nunito',sans-serif;">Add Item</div>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="form-group" style="flex:3">
+          <input type="text" id="rcptItemName" placeholder="Item name (press Enter to add)" onkeydown="if(event.key==='Enter'){event.preventDefault();addReceiptItem();}">
+        </div>
+        <div class="form-group" style="flex:1; min-width:90px">
+          <input type="number" id="rcptItemAmt" min="0" step="0.01" placeholder="$0.00" onkeydown="if(event.key==='Enter'){event.preventDefault();addReceiptItem();}">
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:0; align-items:center; gap:10px">
+        <div class="form-group" style="flex:2; margin-bottom:0">
+          <select id="rcptItemCat"></select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addReceiptItem()" style="flex-shrink:0; margin-top:0">+ Add Item</button>
+      </div>
+    </div>
+
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('splitModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="importReceiptItems()">Import All as Transactions</button>
+      <button class="btn btn-secondary" onclick="closeModal('receiptModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveReceipt()">✓ Save & Add to Transactions</button>
     </div>
   </div>
 </div>
@@ -553,7 +584,7 @@ let state = {
 let editingTxId = null;
 let editingBudgetId = null;
 let pendingReceiptItems = [];
-let dashCatChartInstance = null; // unused, kept for safety
+let dashCatChartInstance = null;
 
 const DEFAULT_BUDGETS = [
   { id: uid(), name: 'Housing', emoji: '🏠', color: '#2d6a4f', amount: 1500 },
@@ -633,27 +664,17 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  document.querySelector(`[data-page="${id}"]`).classList.add('active');
-  if (id === 'dashboard') renderDashboard();
-  if (id === 'budget') renderBudgetPage();
+  const navEl = document.querySelector(`[data-page="${id}"]`);
+  if (navEl) navEl.classList.add('active');
+  if (id === 'dashboard')    renderDashboard();
+  if (id === 'budget')       renderBudgetPage();
   if (id === 'transactions') renderTransactions();
-  if (id === 'goals') renderGoals();
-  if (id === 'receipts') renderReceiptHistory();
+  if (id === 'goals')        renderGoals();
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => showPage(item.dataset.page));
-  });
-  document.querySelectorAll('.modal-overlay').forEach(m => {
-    m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('open'); });
-  });
-  loadState();
-  renderAll();
-});
 
 // ─── Modals ───────────────────────────────────────────────────
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+// (nav and modal overlay listeners are attached in DOMContentLoaded at the bottom)
 
 // ─── Categories select ────────────────────────────────────────
 function populateCatSelect(selId, type = null) {
@@ -861,29 +882,31 @@ function renderDashboard() {
   remEl.className = 'stat-value ' + (remaining >= 0 ? 'green' : 'red');
   document.getElementById('statSavings').textContent = savingsRate + '%';
 
-  // Spending by category — pure CSS horizontal bars, no library needed
+  // Category bar chart
   const spendMap = getMonthSpendByCategory();
-  const cats = state.budgets.filter(b => spendMap[b.id]).sort((a, b) => spendMap[b.id] - spendMap[a.id]);
-  const catEl = document.getElementById('dashCatBars');
+  const cats = state.budgets.filter(b => spendMap[b.id]);
+  if (dashCatChartInstance) { try { dashCatChartInstance.destroy(); } catch(e){} dashCatChartInstance = null; }
+  const ctx = document.getElementById('dashCatChart');
   if (!cats.length) {
-    catEl.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="empty-icon">🛍️</div><div class="empty-text">No spending this month yet</div><div class="empty-hint">Add some transactions to see your breakdown</div></div>';
+    ctx.parentElement.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-text">No spending this month yet</div><div class="empty-hint">Add transactions to see your chart</div></div>';
+  } else if (typeof Chart === 'undefined') {
+    ctx.parentElement.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-text">Chart loading…</div><div class="empty-hint">Switch away and back in a moment</div></div>';
   } else {
-    const maxAmt = spendMap[cats[0].id];
-    catEl.innerHTML = cats.map(b => {
-      const amt = spendMap[b.id];
-      const pct = Math.round((amt / maxAmt) * 100);
-      return `<div style="margin-bottom:13px">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px">
-          <div style="font-size:14px; font-weight:600; display:flex; align-items:center; gap:6px; font-family:'Nunito',sans-serif">
-            <span>${b.emoji}</span> ${escHtml(b.name)}
-          </div>
-          <div style="font-size:13px; font-weight:700; color:var(--text2)">${fmt(amt)}</div>
-        </div>
-        <div style="height:10px; background:var(--surface2); border-radius:99px; overflow:hidden">
-          <div style="height:100%; width:${pct}%; background:${b.color}; border-radius:99px; transition:width .4s"></div>
-        </div>
-      </div>`;
-    }).join('');
+    try {
+      dashCatChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: cats.map(b => `${b.emoji} ${b.name}`),
+          datasets: [{ label: 'Spent', data: cats.map(b => spendMap[b.id] || 0), backgroundColor: cats.map(b => b.color + 'cc'), borderRadius: 5, borderSkipped: false }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { ticks: { callback: v => '$' + v.toLocaleString() }, grid: { color: '#f0e4d4' } }, x: { grid: { display: false } } }
+        }
+      });
+    } catch(e) {
+      ctx.parentElement.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-text">Chart unavailable</div></div>';
+    }
   }
 
   // Budget progress bars
@@ -1008,190 +1031,93 @@ function renderGoals() {
   }).join('');
 }
 
-// ─── Receipt Upload & AI ───────────────────────────────────────
-const uploadZone = document.getElementById('uploadZone');
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) processReceiptFile(f); });
+// ─── Receipt (manual entry) ────────────────────────────────────
+let rcptDraftItems = []; // items being built in the receipt modal
 
-function handleReceiptUpload(e) {
-  const file = e.target.files[0];
-  if (file) processReceiptFile(file);
-  e.target.value = '';
+function showReceiptModal() {
+  rcptDraftItems = [];
+  document.getElementById('rcptStore').value = '';
+  document.getElementById('rcptDate').value = today();
+  document.getElementById('rcptItemName').value = '';
+  document.getElementById('rcptItemAmt').value = '';
+  populateCatSelect('rcptItemCat');
+  renderRcptItems();
+  document.getElementById('receiptModal').classList.add('open');
+  setTimeout(() => document.getElementById('rcptStore').focus(), 80);
 }
 
-async function processReceiptFile(file) {
-  const resultDiv = document.getElementById('receiptResult');
-  resultDiv.style.display = '';
-  resultDiv.innerHTML = `<div class="ai-result"><div class="loading-row"><div class="spinner"></div><span>Reading receipt with AI...</span></div></div>`;
+function addReceiptItem() {
+  const name = document.getElementById('rcptItemName').value.trim();
+  const amt  = parseFloat(document.getElementById('rcptItemAmt').value);
+  const catId = document.getElementById('rcptItemCat').value;
 
-  try {
-    const base64 = await fileToBase64(file);
-    const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf';
+  if (!name)              { toast('Enter an item name first'); return; }
+  if (isNaN(amt) || amt <= 0) { toast('Enter a valid amount'); return; }
 
-    if (!isImage && !isPdf) { throw new Error('Please upload an image or PDF'); }
-
-    const mediaType = file.type;
-
-    const messageContent = isImage
-      ? [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: `You are a receipt parser. Extract ALL line items from this receipt image.
-Return ONLY valid JSON, no markdown, no explanation. Format:
-{
-  "store": "Store name",
-  "date": "YYYY-MM-DD or empty string",
-  "total": 0.00,
-  "items": [
-    { "name": "Item name", "amount": 0.00, "category": "best guess category from: Groceries, Dining Out, Health, Shopping, Transport, Entertainment, Other" }
-  ]
-}` }
-        ]
-      : [
-          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-          { type: 'text', text: `You are a receipt parser. Extract ALL line items from this receipt PDF.
-Return ONLY valid JSON, no markdown, no explanation. Format:
-{
-  "store": "Store name",
-  "date": "YYYY-MM-DD or empty string",
-  "total": 0.00,
-  "items": [
-    { "name": "Item name", "amount": 0.00, "category": "best guess category from: Groceries, Dining Out, Health, Shopping, Transport, Entertainment, Other" }
-  ]
-}` }
-        ];
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: messageContent }]
-      })
-    });
-
-    const data = await response.json();
-    const text = data.content?.map(c => c.text || '').join('').trim();
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-
-    // Store receipt
-    const receipt = {
-      id: uid(),
-      filename: file.name,
-      store: parsed.store || 'Unknown Store',
-      date: parsed.date || today(),
-      total: parsed.total || 0,
-      items: parsed.items || [],
-      processedAt: new Date().toISOString()
-    };
-    state.receipts = state.receipts || [];
-    state.receipts.unshift(receipt);
-    saveState();
-
-    pendingReceiptItems = receipt.items.map(item => ({
-      ...item,
-      selected: true,
-      resolvedCategoryId: findCategoryId(item.category)
-    }));
-
-    showSplitModal(receipt);
-    resultDiv.innerHTML = `<div class="ai-result"><div class="ai-result-title">✅ Receipt read! Found ${receipt.items.length} item(s) from ${receipt.store}</div></div>`;
-    renderReceiptHistory();
-
-  } catch(err) {
-    resultDiv.innerHTML = `<div class="ai-result" style="background:var(--danger-light); border-color:#f5c6c2"><div class="ai-result-title" style="color:var(--danger)">⚠ Could not parse receipt</div><div class="text-sm text-muted">${err.message}</div></div>`;
-  }
+  rcptDraftItems.push({ id: uid(), name, amount: amt, categoryId: catId });
+  document.getElementById('rcptItemName').value = '';
+  document.getElementById('rcptItemAmt').value  = '';
+  document.getElementById('rcptItemName').focus();
+  renderRcptItems();
 }
 
-function findCategoryId(guess) {
-  if (!guess) return state.budgets[0]?.id;
-  const lower = guess.toLowerCase();
-  const match = state.budgets.find(b => b.name.toLowerCase().includes(lower) || lower.includes(b.name.toLowerCase()));
-  return match ? match.id : (state.budgets.find(b => b.name === 'Other')?.id || state.budgets[0]?.id);
+function removeRcptItem(id) {
+  rcptDraftItems = rcptDraftItems.filter(i => i.id !== id);
+  renderRcptItems();
 }
 
-function fileToBase64(file) {
-  return new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload = () => res(reader.result.split(',')[1]);
-    reader.onerror = () => rej(new Error('Could not read file'));
-    reader.readAsDataURL(file);
-  });
-}
+function renderRcptItems() {
+  const list  = document.getElementById('rcptItemsList');
+  const total = rcptDraftItems.reduce((s, i) => s + i.amount, 0);
+  document.getElementById('rcptRunningTotal').textContent = fmt(total);
 
-function showSplitModal(receipt) {
-  const container = document.getElementById('splitItems');
-  container.innerHTML = `<div style="margin-bottom:14px; padding:12px 14px; background:var(--surface2); border-radius:8px; font-size:14px">
-    <strong>${escHtml(receipt.store)}</strong> · ${receipt.date ? fmtDate(receipt.date) : 'No date'} · Total: ${fmt(receipt.total)}
-  </div>` +
-  pendingReceiptItems.map((item, i) => `
-    <div class="receipt-item">
-      <div style="flex:1">
-        <div style="font-weight:500; font-size:14px">${escHtml(item.name)}</div>
-        <div style="font-size:12px; color:var(--text3)">Suggested: ${item.category}</div>
-      </div>
-      <div class="receipt-item-controls">
-        <select style="font-size:13px; padding:5px 8px; border-radius:6px; border:1px solid var(--border2)" onchange='pendingReceiptItems[${i}].resolvedCategoryId = this.value'>
-          ${state.budgets.map(b => `<option value="${b.id}" ${b.id === item.resolvedCategoryId ? 'selected' : ''}>${b.emoji} ${b.name}</option>`).join('')}
-        </select>
-        <input type="number" value="${item.amount.toFixed(2)}" min="0" step="0.01" style="width:80px; font-size:13px; padding:5px 8px; border-radius:6px; border:1px solid var(--border2); text-align:right;  onchange='pendingReceiptItems[${i}].amount = parseFloat(this.value)||0'>
-        <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer">
-          <input type="checkbox" ${item.selected ? 'checked' : ''} onchange='pendingReceiptItems[${i}].selected = this.checked'> Import
-        </label>
-      </div>
-    </div>`).join('');
-  document.getElementById('splitModal').classList.add('open');
-}
-
-function importReceiptItems() {
-  const receiptDate = state.receipts[0]?.date || today();
-  const store = state.receipts[0]?.store || 'Receipt';
-  let count = 0;
-  pendingReceiptItems.forEach(item => {
-    if (!item.selected) return;
-    state.transactions.push({
-      id: uid(), type: 'expense', date: receiptDate,
-      desc: item.name, amount: item.amount,
-      categoryId: item.resolvedCategoryId, notes: `From receipt: ${store}`
-    });
-    count++;
-  });
-  state.transactions.sort((a,b) => b.date.localeCompare(a.date));
-  saveState();
-  closeModal('splitModal');
-  showPage('transactions');
-  toast(`${count} item${count !== 1 ? 's' : ''} imported!`);
-}
-
-function renderReceiptHistory() {
-  const hist = document.getElementById('receiptHistory');
-  const rs = state.receipts || [];
-  if (!rs.length) {
-    hist.innerHTML = `<div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-text">No receipts yet</div><div class="empty-hint">Upload your first receipt above</div></div>`;
+  if (!rcptDraftItems.length) {
+    list.innerHTML = `<div style="padding:16px; text-align:center; font-size:13px; color:var(--text3); font-weight:500;">
+      No items yet — add one below
+    </div>`;
     return;
   }
-  hist.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Date</th><th>Store</th><th>Items</th><th style="text-align:right">Total</th><th></th></tr></thead>
-    <tbody>${rs.map(r => `<tr>
-      <td style="font-size:13px;color:var(--text2)">${r.date ? fmtDate(r.date) : '—'}</td>
-      <td style="font-weight:500">${escHtml(r.store)}</td>
-      <td><span class="badge badge-gray">${r.items.length} items</span></td>
-      <td style="text-align:right;>${fmt(r.total)}</td>
-      <td><button class="btn btn-secondary btn-sm" onclick='reImportReceipt("${r.id}")'>Re-import</button></td>
-    </tr>`).join('')}</tbody>
-  </table></div>`;
+
+  list.innerHTML = rcptDraftItems.map((item, idx) => {
+    const cat = state.budgets.find(b => b.id === item.categoryId);
+    return `<div style="display:flex; align-items:center; gap:10px; padding:9px 16px; ${idx % 2 === 1 ? 'background:#fafaf7;' : ''}">
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(item.name)}</div>
+        <div>
+          <select style="font-size:12px; padding:2px 6px; border-radius:6px; border:1px solid var(--border2); background:var(--surface); color:var(--text2); font-family:'Nunito Sans',sans-serif; margin-top:2px;"
+            onchange="rcptDraftItems[${idx}].categoryId = this.value">
+            ${state.budgets.map(b => `<option value="${b.id}" ${b.id === item.categoryId ? 'selected':''}>${b.emoji} ${b.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="font-weight:700; font-size:14px; font-family:'Nunito',sans-serif; flex-shrink:0;">${fmt(item.amount)}</div>
+      <button onclick='removeRcptItem("${item.id}")' style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px 4px;border-radius:4px;line-height:1;" title="Remove">×</button>
+    </div>`;
+  }).join('');
 }
 
-function reImportReceipt(id) {
-  const r = state.receipts.find(r => r.id === id);
-  if (!r) return;
-  pendingReceiptItems = r.items.map(item => ({
-    ...item, selected: true, resolvedCategoryId: findCategoryId(item.category)
-  }));
-  showSplitModal(r);
+function saveReceipt() {
+  if (!rcptDraftItems.length) { toast('Add at least one item first'); return; }
+
+  const store = document.getElementById('rcptStore').value.trim() || 'Receipt';
+  const date  = document.getElementById('rcptDate').value || today();
+
+  // Push each item as a transaction
+  rcptDraftItems.forEach(item => {
+    state.transactions.push({
+      id: uid(), type: 'expense', date,
+      desc: item.name, amount: item.amount,
+      categoryId: item.categoryId,
+      notes: `Receipt: ${store}`
+    });
+  });
+  state.transactions.sort((a, b) => b.date.localeCompare(a.date));
+
+  saveState();
+  closeModal('receiptModal');
+  renderTransactions();
+  renderDashboard();
+  toast(`🧾 ${rcptDraftItems.length} item${rcptDraftItems.length !== 1 ? 's' : ''} added from ${store}!`);
 }
 
 // ─── Init ──────────────────────────────────────────────────────
@@ -1202,7 +1128,21 @@ function renderAll() {
   renderGoals();
 }
 
-// Auto-save reminder
+document.addEventListener('DOMContentLoaded', function () {
+  // Attach nav clicks
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => showPage(item.dataset.page));
+  });
+  // Click-outside to close modals
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+  });
+
+  loadState();
+  renderAll();
+});
+
+// Auto-save status refresh
 setInterval(() => {
   document.getElementById('saveStatus').textContent = 'Auto-saved ✓';
 }, 30000);
